@@ -48,7 +48,10 @@ async function main() {
     if (!r.win64) continue;
     const url =
       r.url +
-      r.archive.replace("[VERSION]", r.version).replace("[OS]", "win64");
+      r.archive
+        .replace("[VERSION]", r.version)
+        .replace("[ARCH]", "")
+        .replace("[OS]", "win64");
     console.log(url);
 
     const fn = path.basename(url);
