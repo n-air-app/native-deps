@@ -15,9 +15,9 @@ interface AdditionalItem {
 }
 
 async function download(url: string, path: string): Promise<void> {
-  console.log(`download ${url} ${path}`);
+  console.log(`download ${url} to ${path}`);
   if (fs.existsSync(path)) {
-    console.log("skip download");
+    console.log(`skip download ${url}`);
     return;
   }
 
@@ -58,34 +58,32 @@ async function main() {
     await download(url, file);
 
     const addItem = (additional as any)[r.name] as AdditionalItem;
-    if (addItem) {
-      const nFn = fn.replace(".tar.gz", `${addItem.suffix}.tar.gz`);
-      const nFile = `${dist}/${nFn}`;
-      result[r.name] = nFn;
-      if (fs.existsSync(nFile)) {
-        console.log("skip recompress");
-      } else {
-        const temp = `${dist}/temp`;
-        if (fs.existsSync(temp))
-          fs.rmSync(temp, { recursive: true, force: true });
-        fs.mkdirSync(temp);
+    if (!addItem) continue;
 
-        await extract(file, temp);
+    const nFn = fn.replace(".tar.gz", `${addItem.suffix}.tar.gz`);
+    const nFile = `${dist}/${nFn}`;
+    result[r.name] = nFn;
 
-        const aFn = path.basename(addItem.url);
-        const aFile = `${dist}/${aFn}`;
-        await download(addItem.url, aFile);
-        await extract(aFile, `${temp}${addItem.sub}`);
+    const temp = `${dist}/temp/${addItem.suffix}`;
+    if (!fs.existsSync(temp)) {
+      fs.rmSync(temp, { recursive: true, force: true });
+      fs.mkdirSync(temp, { recursive: true });
+      await extract(file, temp);
 
-        await compress(temp, nFile);
-        fs.rmSync(temp, { recursive: true, force: true });
-      }
+      const aFn = path.basename(addItem.url);
+      const aFile = `${dist}/temp/${aFn}`;
+      await download(addItem.url, aFile);
+      await extract(aFile, `${temp}${addItem.sub}`);
+    } else {
+      console.log(`skip additional download & extract for ${temp}`);
     }
+
+    await compress(temp, nFile);
   }
 
   console.log("------------------");
   console.log("------------------");
-  console.log("dist 以下のファイルを以下にuploadしてください");
+  console.log("dist 以下のファイルを以下にuploadしてください (temp除く)");
   console.log("https://github.com/n-air-app/native-deps/releases/tag/assets");
 
   console.log("------------------");
