@@ -8,39 +8,44 @@ import additional from "./additional.json";
 
 const dist = "./dist";
 
-interface AdditionalItem {
-  suffix: string;
+interface ArchiveItem {
   sub: string;
   url: string;
 }
 
-async function download(url: string, path: string): Promise<void> {
-  console.log(`download ${url} to ${path}`);
-  if (fs.existsSync(path)) {
+interface AdditionalItem {
+  suffix: string;
+  archives: ArchiveItem[];
+}
+
+async function download(url: string, path: string,force=false): Promise<void> {
+  if (fs.existsSync(path) && !force) {
     console.log(`skip download ${url}`);
     return;
   }
 
+  console.log(`download ${url} to ${path}`);
   const r = await axios.get(url, { responseType: "arraybuffer" });
   fs.writeFileSync(path, Buffer.from(r.data, "binary"));
 }
 
 async function compress(src: string, dest: string) {
   return new Promise((resolve, reject) => {
-    console.log(`compress ${src} ${dest}`);
+    console.log(`compress ${src} to ${dest}`);
     targz.compress({ src, dest }, resolve);
   });
 }
 
 async function extract(src: string, dest: string) {
   return new Promise((resolve, reject) => {
-    console.log(`extract ${src} ${dest}`);
+    console.log(`extract ${src} to ${dest}`);
     targz.decompress({ src, dest }, resolve);
   });
 }
 
 async function main() {
   const result: { [name: string]: string } = {};
+  const useCache = process.argv.includes("--cache");
 
   if (!fs.existsSync(dist)) fs.mkdirSync(dist);
 
@@ -48,8 +53,11 @@ async function main() {
     if (!r.win64) continue;
     const url =
       r.url +
-      r.archive.replace("[VERSION]", r.version).replace("[OS]", "win64").replace("[ARCH]", "");
-    console.log(url);
+      r.archive
+        .replace("[VERSION]", r.version)
+        .replace("[OS]", "win64")
+        .replace("[ARCH]", "");
+//    console.log(url);
 
     const fn = path.basename(url);
     const file = `${dist}/${fn}`;
@@ -65,18 +73,16 @@ async function main() {
     result[r.name] = nFn;
 
     const temp = `${dist}/temp/${addItem.suffix}`;
-    if (!fs.existsSync(temp)) {
       fs.rmSync(temp, { recursive: true, force: true });
       fs.mkdirSync(temp, { recursive: true });
       await extract(file, temp);
 
-      const aFn = path.basename(addItem.url);
-      const aFile = `${dist}/temp/${aFn}`;
-      await download(addItem.url, aFile);
-      await extract(aFile, `${temp}${addItem.sub}`);
-    } else {
-      console.log(`skip additional download & extract for ${temp}`);
-    }
+      for (const a of addItem.archives) {
+        const aFn = path.basename(a.url);
+        const aFile = `${dist}/temp/${aFn}`;
+        await download(a.url, aFile,true);
+        await extract(aFile, `${temp}${a.sub}`);
+      }
 
     await compress(temp, nFile);
   }
