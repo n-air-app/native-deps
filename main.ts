@@ -3,117 +3,167 @@ import path from "path";
 import axios from "axios";
 import targz from "targz";
 
-import repo from "./repositories.json";
-import additional from "./additional.json";
+import repositories from "./repositories.json";
+import additionalFiles from "./additional.json";
 
-const dist = "./dist";
+// 出力ディレクトリのパス
+const DIST_DIRECTORY = "./dist";
 
+// アーカイブアイテムのインターフェース
+// アーカイブをどこに展開するかの情報を持つ
 interface ArchiveItem {
-  sub: string;
-  url: string;
+  sub: string; // サブディレクトリパス
+  url: string; // ダウンロードURL
 }
 
+// 追加ファイルのインターフェース
+// メインアーカイブに追加するファイルの情報を持つ
 interface AdditionalItem {
-  suffix: string;
-  archives: ArchiveItem[];
+  suffix: string; // ファイル名に追加するサフィックス
+  archives: ArchiveItem[]; // 追加するアーカイブリスト
 }
 
+// 指定したURLからファイルをダウンロードする関数
+// @param url ダウンロード元URL
+// @param destinationPath 保存先パス
+// @param force 強制ダウンロードフラグ（既存ファイルを上書き）
 async function download(
   url: string,
-  path: string,
+  destinationPath: string,
   force = false
 ): Promise<void> {
-  if (fs.existsSync(path) && !force) {
-    console.log(`skip download ${url}`);
+  if (fs.existsSync(destinationPath) && !force) {
+    console.log(`スキップ: ${url} のダウンロード`);
     return;
   }
 
-  console.log(`download ${url} to ${path}`);
-  const r = await axios.get(url, { responseType: "arraybuffer" });
-  fs.writeFileSync(path, Buffer.from(r.data, "binary"));
+  console.log(`ダウンロード中: ${url} → ${destinationPath}`);
+  const response = await axios.get(url, { responseType: "arraybuffer" });
+  fs.writeFileSync(destinationPath, Buffer.from(response.data, "binary"));
 }
 
-async function compress(src: string, dest: string) {
+// ディレクトリを圧縮する関数
+// @param sourcePath 圧縮元ディレクトリ
+// @param destinationPath 圧縮先ファイルパス
+async function compress(sourcePath: string, destinationPath: string) {
   return new Promise((resolve, reject) => {
-    console.log(`compress ${src} to ${dest}`);
-    targz.compress({ src, dest }, resolve);
+    console.log(`圧縮中: ${sourcePath} → ${destinationPath}`);
+    targz.compress({ src: sourcePath, dest: destinationPath }, resolve);
   });
 }
 
-async function extract(src: string, dest: string) {
+// アーカイブを展開する関数
+// @param sourcePath 展開元アーカイブパス
+// @param destinationPath 展開先ディレクトリパス
+async function extract(sourcePath: string, destinationPath: string) {
   return new Promise((resolve, reject) => {
-    console.log(`extract ${src} to ${dest}`);
-    targz.decompress({ src, dest }, resolve);
+    console.log(`展開中: ${sourcePath} → ${destinationPath}`);
+    targz.decompress({ src: sourcePath, dest: destinationPath }, resolve);
   });
 }
 
+// メイン処理を行う関数
 async function main() {
-  const result: { [name: string]: string } = {};
+  // 結果格納用オブジェクト（パッケージ名とファイル名のマッピング）
+  const resultPackages: { [packageName: string]: string } = {};
+  // キャッシュを使用するかどうかのフラグ
   const useCache = process.argv.includes("--cache");
 
-  if (!fs.existsSync(dist)) fs.mkdirSync(dist);
+  // 出力ディレクトリが存在しない場合は作成
+  if (!fs.existsSync(DIST_DIRECTORY)) fs.mkdirSync(DIST_DIRECTORY);
 
-  for (const r of repo.root) {
-    if (!r.win64) continue;
-    const url =
-      r.url +
-      r.archive
-        .replace("[VERSION]", r.version)
+  // リポジトリごとの処理
+  for (const repository of repositories.root) {
+    // Windows 64bit向けのものだけを処理
+    if (!repository.win64) continue;
+
+    // ダウンロードURLの組み立て
+    const downloadUrl =
+      repository.url +
+      repository.archive
+        .replace("[VERSION]", repository.version)
         .replace("[OS]", "win64")
         .replace("[ARCH]", "");
-    //    console.log(url);
 
-    const fn = path.basename(url);
-    const file = `${dist}/${fn}`;
-    result[r.name] = fn;
+    // ファイル名を取得してダウンロード先パスを組み立て
+    const filename = path.basename(downloadUrl);
+    const filePath = `${DIST_DIRECTORY}/${filename}`;
+    resultPackages[repository.name] = filename;
 
-    await download(url, file);
+    // ファイルをダウンロード
+    await download(downloadUrl, filePath);
 
-    const addItem = (additional as any)[r.name] as AdditionalItem;
-    if (!addItem) continue;
+    // 追加ファイルの処理
+    const additionalItem = (additionalFiles as any)[
+      repository.name
+    ] as AdditionalItem;
+    if (!additionalItem) continue;
 
-    const nFn = fn.replace(".tar.gz", `${addItem.suffix}.tar.gz`);
-    const nFile = `${dist}/${nFn}`;
-    result[r.name] = nFn;
+    // 新しいファイル名の組み立て（サフィックス付き）
+    const newFilename = filename.replace(
+      ".tar.gz",
+      `${additionalItem.suffix}.tar.gz`
+    );
+    const newFilePath = `${DIST_DIRECTORY}/${newFilename}`;
+    resultPackages[repository.name] = newFilename;
 
-    const temp = `${dist}/temp/${addItem.suffix}`;
+    // 一時ディレクトリのパス
+    const tempDirectory = `${DIST_DIRECTORY}/temp/${additionalItem.suffix}`;
+
     if (!useCache) {
-      fs.rmSync(temp, { recursive: true, force: true });
-      fs.mkdirSync(temp, { recursive: true });
-      await extract(file, temp);
+      // キャッシュを使わない場合、いったん一時ディレクトリを削除して再作成
+      fs.rmSync(tempDirectory, { recursive: true, force: true });
+      fs.mkdirSync(tempDirectory, { recursive: true });
 
-      for (const a of addItem.archives) {
-        const aFn = path.basename(a.url);
-        const aFile = `${dist}/temp/${aFn}`;
-        await download(a.url, aFile, true);
-        if (aFile.endsWith(".tar.gz") || aFile.endsWith(".zip")) {
-          await extract(aFile, `${temp}${a.sub}`);
+      // メインアーカイブを一時ディレクトリに展開
+      await extract(filePath, tempDirectory);
+
+      // 追加ファイルを処理
+      for (const archive of additionalItem.archives) {
+        const archiveFilename = path.basename(archive.url);
+        const archiveFilePath = `${DIST_DIRECTORY}/temp/${archiveFilename}`;
+
+        // 追加ファイルをダウンロード
+        await download(archive.url, archiveFilePath, true);
+
+        // アーカイブの種類によって処理を分岐
+        if (
+          archiveFilePath.endsWith(".tar.gz") ||
+          archiveFilePath.endsWith(".zip")
+        ) {
+          // アーカイブの場合は展開
+          await extract(archiveFilePath, `${tempDirectory}${archive.sub}`);
         } else {
-          fs.copyFileSync(aFile, `${temp}${a.sub}`);
+          // 通常ファイルの場合はコピー
+          fs.copyFileSync(archiveFilePath, `${tempDirectory}${archive.sub}`);
         }
       }
     } else {
-      console.log(`skip extract ${file}`);
+      console.log(`スキップ: ${filePath} の展開（キャッシュ利用）`);
     }
-    await compress(temp, nFile);
+
+    // 一時ディレクトリの内容を圧縮して新しいアーカイブを作成
+    await compress(tempDirectory, newFilePath);
   }
 
+  // 結果の出力
   console.log("------------------");
   console.log("------------------");
-  console.log("dist 以下のファイルを以下にuploadしてください (temp除く)");
+  console.log("dist 以下のファイルを以下にアップロードしてください (temp除く)");
   console.log(
     "https://github.com/n-air-app/native-deps/releases/tag/[指定タグ]"
   );
 
   console.log("------------------");
   console.log("package.json の dependencies を以下に変更してください");
-  for (const k in result) {
+  for (const packageName in resultPackages) {
     console.log(
-      `"${k}": "https://github.com/n-air-app/native-deps/releases/download/[指定タグ]/${result[k]}",`
+      `"${packageName}": "https://github.com/n-air-app/native-deps/releases/download/[指定タグ]/${resultPackages[packageName]}",`
     );
   }
 }
 
+// メイン処理の実行
 main()
   .then()
-  .catch((e) => console.log(e));
+  .catch((error) => console.log(error));
