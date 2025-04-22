@@ -18,7 +18,11 @@ interface AdditionalItem {
   archives: ArchiveItem[];
 }
 
-async function download(url: string, path: string,force=false): Promise<void> {
+async function download(
+  url: string,
+  path: string,
+  force = false
+): Promise<void> {
   if (fs.existsSync(path) && !force) {
     console.log(`skip download ${url}`);
     return;
@@ -57,7 +61,7 @@ async function main() {
         .replace("[VERSION]", r.version)
         .replace("[OS]", "win64")
         .replace("[ARCH]", "");
-//    console.log(url);
+    //    console.log(url);
 
     const fn = path.basename(url);
     const file = `${dist}/${fn}`;
@@ -73,6 +77,7 @@ async function main() {
     result[r.name] = nFn;
 
     const temp = `${dist}/temp/${addItem.suffix}`;
+    if (!useCache) {
       fs.rmSync(temp, { recursive: true, force: true });
       fs.mkdirSync(temp, { recursive: true });
       await extract(file, temp);
@@ -80,23 +85,31 @@ async function main() {
       for (const a of addItem.archives) {
         const aFn = path.basename(a.url);
         const aFile = `${dist}/temp/${aFn}`;
-        await download(a.url, aFile,true);
-        await extract(aFile, `${temp}${a.sub}`);
+        await download(a.url, aFile, true);
+        if (aFile.endsWith(".tar.gz") || aFile.endsWith(".zip")) {
+          await extract(aFile, `${temp}${a.sub}`);
+        } else {
+          fs.copyFileSync(aFile, `${temp}${a.sub}`);
+        }
       }
-
+    } else {
+      console.log(`skip extract ${file}`);
+    }
     await compress(temp, nFile);
   }
 
   console.log("------------------");
   console.log("------------------");
   console.log("dist 以下のファイルを以下にuploadしてください (temp除く)");
-  console.log("https://github.com/n-air-app/native-deps/releases/tag/assets");
+  console.log(
+    "https://github.com/n-air-app/native-deps/releases/tag/[指定タグ]"
+  );
 
   console.log("------------------");
   console.log("package.json の dependencies を以下に変更してください");
   for (const k in result) {
     console.log(
-      `"${k}": "https://github.com/n-air-app/native-deps/releases/download/assets/${result[k]}",`
+      `"${k}": "https://github.com/n-air-app/native-deps/releases/download/[指定タグ]/${result[k]}",`
     );
   }
 }

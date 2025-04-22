@@ -1,15 +1,16 @@
 native-deps
 
-`npm run start`
+`npm run build`
+
+基本的にosnのバージョン変更毎か追加dllの更新時に処理してください。
 
 repositories.json は適時 streamlabs desktop にあるファイルにて更新してください。
 
+https://github.com/streamlabs/desktop/blob/master/scripts/repositories.json
 
-additionalのファイル結合のために作成される　dist/temp は削除しません。
-また圧縮は毎回行います。
-また存在する場合は上書きをしませんので、クリーン作成したい場合は予め削除、
-手動変更を加えたい場合は展開済みを操作して再実行してください。
+osnバージョンが変わった場合、都度タグを切ってください。
 
-repositories.json referenceは参照したstreamlabsのURLです。
-メモ用であり動作に影響はしません。
+圧縮前に変更を行いたい場合は一旦処理の上 `npm run cache` を実行してください。
+tempにて展開したファイルを再ダウンロードせずに圧縮します。
 
+クリーン実行したい場合は dist フォルダを一旦消してください。

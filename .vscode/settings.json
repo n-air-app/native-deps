@@ -1,3 +1,6 @@
 {
-  "cSpell.words": ["targz"]
+  "cSpell.words": [
+    "targz"
+  ],
+  "editor.formatOnSave": true
 }
