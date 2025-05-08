@@ -112,6 +112,7 @@ async function main() {
 
     if (!useCache) {
       // キャッシュを使わない場合、いったん一時ディレクトリを削除して再作成
+      console.log(`一時ディレクトリを削除します`);
       fs.rmSync(tempDirectory, { recursive: true, force: true });
       fs.mkdirSync(tempDirectory, { recursive: true });
 
@@ -135,7 +136,14 @@ async function main() {
           await extract(archiveFilePath, `${tempDirectory}${archive.sub}`);
         } else {
           // 通常ファイルの場合はコピー
-          fs.copyFileSync(archiveFilePath, `${tempDirectory}${archive.sub}`);
+          console.log(
+            `コピー中: ${archiveFilePath} → ${tempDirectory}${archive.sub}`
+          );
+
+          fs.copyFileSync(
+            archiveFilePath,
+            `${tempDirectory}${archive.sub}/${archiveFilename}`
+          );
         }
       }
     } else {
