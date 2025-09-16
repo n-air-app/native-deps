@@ -1,10 +1,10 @@
 # Native Dependencies
 
-このリポジトリは、N-Air アプリケーション用のネイティブ依存関係（モジュール）を管理するためのツールです。
+このリポジトリは、N-Air アプリケーション用のネイティブ依存関係（obs-studio-node 関連）を管理するためのツールです。
 
 ## 概要
 
-このツールは、指定されたリポジトリからネイティブモジュールをダウンロードし、必要に応じて追加ファイルを組み込んで再パッケージングします。
+このツールは、repository.json にて指定されたネイティブモジュールをダウンロードします。
 
 ## 使い方
 
@@ -14,21 +14,11 @@
 # 依存関係をインストール
 npm install
 
-# ビルド実行（モジュールのダウンロードと再パッケージング）
+# ビルド実行（モジュールのダウンロード）
 npm run build
 ```
 
-基本的に OBS Studio Node (OSN) のバージョン変更時や追加 DLL の更新時に処理してください。
-
-### キャッシュの活用
-
-圧縮前にファイルを編集したい場合は、一旦処理した後に以下のコマンドを実行してください：
-
-```bash
-npm run cache
-```
-
-これにより、`temp` ディレクトリに展開したファイルを再ダウンロードせずに圧縮します。
+基本的に OBS Studio Node (OSN) のバージョン変更時に処理してください。
 
 ### クリーン実行
 
@@ -68,30 +58,9 @@ npm run build
 Streamlabs Desktop の repositories.json ファイルを参照して定期的に更新してください：
 https://github.com/streamlabs/desktop/blob/master/scripts/repositories.json
 
-### additional.json
-
-このファイルには、ダウンロードしたアーカイブに追加するファイルの情報が含まれています。
-以下の形式で定義されています：
-
-```json
-{
-  "モジュール名": {
-    "suffix": "ファイル名に追加するサフィックス",
-    "archives": [
-      {
-        "sub": "展開先のサブディレクトリパス",
-        "url": "追加ファイルのダウンロードURL"
-      },
-      ...
-    ]
-  },
-  ...
-}
-```
-
 ## リリース手順
 
-1. OSN バージョンが変更された場合、または追加モジュールに変更があった場合は、新しいタグを切ってください
+1. OSN バージョンが変更された場合は、新しいタグを切ってください
 
    ```bash
    # 例: osn0.y.z というタグを作成する場合
@@ -107,7 +76,7 @@ https://github.com/streamlabs/desktop/blob/master/scripts/repositories.json
    - リリースタイトルと説明文を入力
    - 「Publish release」ボタンを押さずに一時保存
 
-3. `dist` ディレクトリ内のファイル（`temp` ディレクトリを除く）をリリースページにアップロードします
+3. `dist` ディレクトリ内のファイルをリリースページにアップロードします
 
    - 先ほど作成したドラフトリリースページで「Attach binaries by dropping them here or selecting them」エリアに`dist`内のファイルをドラッグ＆ドロップするか、クリックして選択します
    - すべてのバイナリのアップロードが完了したら「Publish release」ボタンをクリックして公開します
@@ -119,7 +88,7 @@ https://github.com/streamlabs/desktop/blob/master/scripts/repositories.json
    - 例:
      ```json
      "dependencies": {
-       "obs-studio-node": "https://github.com/n-air-app/native-deps/releases/download/osn0.y.z/osn-0.y.z-release-win64_xxxx.tar.gz",
+       "obs-studio-node": "https://github.com/n-air-app/native-deps/releases/download/osn0.y.z/obs-studio-node-0.y.z-release-win64.tar.gz",
        // その他の依存関係
      }
      ```
@@ -133,5 +102,4 @@ https://github.com/streamlabs/desktop/blob/master/scripts/repositories.json
 
 ## 注意事項
 
-- このツールは Windows および macOS 向けにネイティブモジュールをパッケージングします
-- 現在のバージョンでは、Windows 64bit 向けのモジュールのみを処理します
+- このツールは Windows 64bit 向けのモジュールのみを処理します

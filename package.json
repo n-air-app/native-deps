@@ -4,7 +4,6 @@
   "description": "native-deps",
   "main": "index.js",
   "scripts": {
-    "cache": "ts-node main.ts --cache",
     "build": "ts-node main.ts"
   },
   "author": "",
