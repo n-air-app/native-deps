@@ -4,7 +4,7 @@
 
 ## 概要
 
-このツールは、repository.json にて指定されたネイティブモジュールをダウンロードします。
+このツールは、repositories.json にて指定されたネイティブモジュールをダウンロードします。
 
 ## 使い方
 
@@ -47,10 +47,9 @@ npm run build
       "url": "ダウンロード元のURL",
       "archive": "アーカイブファイル名のパターン",
       "version": "バージョン番号",
-      "win64": true/false,
-      "osx": true/false
-    },
-    ...
+      "win64": true,
+      "osx": false
+    }
   ]
 }
 ```
@@ -100,6 +99,24 @@ https://github.com/streamlabs/desktop/blob/master/scripts/repositories.json
    yarn install
    ```
 
-## 注意事項
+## リリース判断
 
-- このツールは Windows 64bit 向けのモジュールのみを処理します
+基本的に Streamlabs Desktop が配布ページにてリリースされたバージョンのみを対象とします。
+
+- https://streamlabs.com/
+- https://github.com/streamlabs/desktop
+
+リポジトリから該当バージョンのタグより `/scripts/repositories.json` を調査します。
+アップデートの場合、ここにある repositories.json を更新します。
+
+ここに記載されている obs-studio-node を利用しているバージョンを参照し：
+
+https://github.com/streamlabs/obs-studio-node
+
+こちらのリポジトリから該当タグより `/.github/workflows/main.yml` を調査します。
+
+ここにある LibOBSVersion が OBS Studio で用いられているバージョンとなります。
+
+リビジョンは毎回異なる可能性が高いので基本的にスルーし、メジャーおよびマイナーで特記事項がある場合に検討対象とします。
+
+N-Air として使用する判断を行った場合、こちらのアップデートを行い、該当名のタグ付け＆リリースを行い、アセットにバイナリを添付します。
