@@ -182,7 +182,7 @@ async function main() {
     resultPackages[repository.name] = filename;
 
     // ファイルをダウンロード
-    //await download(downloadUrl, filePath);
+    await download(downloadUrl, filePath);
   }
 
   // 結果の出力

@@ -1,187 +1,105 @@
 # Native Dependencies
 
-このリポジトリは、N-Air アプリケーション用のネイティブ依存関係（obs-studio-node 関連）を管理するためのツールです。
+このリポジトリは、N-Air 用ネイティブ依存（obs-studio-node 関連）を更新し、
+GitHub Releases 作成に必要な情報を出力するためのツールです。
 
-## 概要
+## 目的
 
-このツールは以下の機能を提供します：
+- Streamlabs Desktop の対象バージョンから `repositories.json` を取得
+- win64 アセットを `dist` にダウンロード
+- リリース作成に必要な情報（タグ名、Release notes、依存 URL）を出力
 
-- Streamlabs Desktop の指定バージョンから `repositories.json` を自動取得・更新
-- ネイティブモジュールのダウンロード（現在はダウンロード処理をコメントアウト）
-- OBS Studio Node のワークフローファイルから LibOBSVersion などの環境変数を抽出
-- リリースノート用のマークダウン表を自動生成
-- パッケージの依存関係情報を出力
-
-## 使い方
-
-### 前提条件
+## 前提
 
 ```bash
-# 依存関係をインストール
 npm install
 ```
 
-### 基本的な使用方法
+## 操作順（実運用）
 
-#### 1. Streamlabs Desktop のバージョンを指定して実行
+### 1) 対象の Streamlabs Desktop バージョンを決める
+
+- [Streamlabs Desktop Releases](https://github.com/streamlabs/desktop/releases) で対象バージョン（例: `v1.19.6`）を確認
+
+### 2) `streamlabs-version.txt` に対象バージョンを書く
+
+```text
+v1.19.6
+```
+
+> 引数で指定した場合は、実行時にこのファイルも更新されます。
+
+### 3) スクリプトを実行する
+
+- `streamlabs-version.txt` を使う場合:
 
 ```bash
-# 特定のバージョンを指定（推奨）
-npm run build v1.19.6
-
-# バージョンを指定しない場合（streamlabs-version.txt から読み取り）
 npm run build
 ```
 
-#### 2. 出力される情報
-
-ツールを実行すると以下の情報が出力されます：
-
-- **アップロード先の案内**: GitHub Releases へのアップロード先 URL
-- **package.json の更新案内**: N-Air プロジェクト用の依存関係設定
-- **リリースノート**: Markdown 表形式でのライブラリバージョン一覧
-- **LibOBSVersion**: OBS Studio のバージョン情報
-
-## ファイル構成
-
-### streamlabs-version.txt
-
-使用する Streamlabs Desktop のバージョンを記録するファイルです。
-コマンドライン引数でバージョンを指定した場合、このファイルが自動更新されます。
-
-### repositories.json
-
-ネイティブモジュールのリポジトリ情報を含む設定ファイルです。
-Streamlabs Desktop の指定バージョンから自動的にダウンロード・更新されます。
-
-取得元: `https://github.com/streamlabs/desktop/blob/{バージョン}/scripts/repositories.json`
-
-形式例：
-
-```json
-{
-  "root": [
-    {
-      "name": "obs-studio-node",
-      "url": "https://s3-us-west-2.amazonaws.com/obsstudionodes3.streamlabs.com/",
-      "archive": "osn-[VERSION]-release-[OS][ARCH].tar.gz",
-      "version": "0.25.56",
-      "win64": true,
-      "osx": true
-    }
-  ]
-}
-```
-
-## リリース手順
-
-### 1. 最新の Streamlabs Desktop バージョンを確認
-
-[Streamlabs Desktop リリースページ](https://github.com/streamlabs/desktop/releases) で最新バージョンを確認します。
-
-### 2. ツールを実行して情報を取得しダウンロード
+- 実行時にバージョンを直接指定する場合:
 
 ```bash
-# 最新バージョンを指定して実行
-npm run build v1.19.6
+npm run build -- v1.19.6
+# または
+npx ts-node main.ts v1.19.6
 ```
 
-### 3. GitHub でリリースを作成
+### 4) 出力された情報を使ってリリースを作成する
 
-1. **タグの作成**
+実行後、以下が出力されます。
 
-   ```bash
-   # obs-studio-node のバージョンに基づいてタグを作成
-   # 例: obs-studio-node が 0.25.56 の場合
-   git tag osn0.25.56
-   git push origin osn0.25.56
-   ```
+- タグ名（例: `osn0.25.56`）
+- リリース先 URL（`https://github.com/n-air-app/native-deps/releases/tag/<tag>`）
+- N-Air 側 `package.json` 用の dependencies 行
+- Release notes 用 Markdown（library/version 表 + ElectronVersion/LibOBSVersion）
 
-2. **GitHub リリースページでリリース作成**
+さらに以下のファイルが生成されます。
 
-   - [n-air-app/native-deps/releases](https://github.com/n-air-app/native-deps/releases) にアクセス
-   - 「Draft a new release」をクリック
-   - 作成したタグを選択
-   - ツールの出力に含まれるリリースノート用マークダウンをコピーして使用
+- `dist/`（アップロードするアセット）
+- `repositories.json`（取得した依存定義）
 
-3. **バイナリファイルのアップロード**
-   - `dist` ディレクトリ内のファイルをリリースページにアップロード
-   - すべてのファイルをアップロード後に「Publish release」で公開
+### 5) Git タグを作成して push する
 
-### 4. N-Air プロジェクトの更新
-
-ツールの出力に表示される依存関係の記述を N-Air プロジェクトの `package.json` に反映します：
-
-```json
-{
-  "dependencies": {
-    "obs-studio-node": "https://github.com/n-air-app/native-deps/releases/download/osn0.25.56/obs-studio-node-0.25.56-release-win64.tar.gz"
-  }
-}
+```bash
+git tag osn0.25.56
+git push origin osn0.25.56
 ```
 
-## 更新判断の指針
+※ タグ名は必ずスクリプト出力の値を使用してください。
 
-### 対象バージョンの選定
+### 6) GitHub Releases を作成する
 
-基本的に [Streamlabs Desktop](https://github.com/streamlabs/desktop/releases) で正式リリースされたバージョンのみを対象とします。
+- [n-air-app/native-deps/releases](https://github.com/n-air-app/native-deps/releases) で「Draft a new release」
+- Tag に 5) で作ったタグを指定
+- Title はタグ名に合わせる
+- Description に、スクリプト出力の `Release notes として以下を追加してください` 以降を貼り付け
+- `dist/` 内のファイルをすべて添付して Publish
 
-### 更新が必要な場合
+### 7) N-Air 側の依存を更新する
 
-以下のような場合に N-Air での依存関係更新を検討します：
+- スクリプト出力の `package.json の dependencies を以下に変更してください` 以降を、N-Air 側 `package.json` に反映
 
-1. **OBS Studio のメジャー・マイナーバージョンアップ**
+## 出力の貼り付け先早見表
 
-   - `LibOBSVersion` の変更を確認
-   - 互換性に影響する可能性がある変更
-
-2. **obs-studio-node の重要な修正**
-
-   - セキュリティ修正
-   - クリティカルなバグ修正
-   - N-Air で使用する機能に関する改善
-
-3. **依存ライブラリの重要な更新**
-   - セキュリティ上の脆弱性の修正
-   - パフォーマンスの大幅な改善
-
-### 更新の流れ
-
-1. **情報収集**
-
-   ```bash
-   npm run build v1.19.6  # 新しいバージョンを指定
-   ```
-
-2. **変更内容の確認**
-
-   - 出力される `LibOBSVersion` や各ライブラリのバージョンを確認
-   - 前回のリリースと比較して変更点を把握
-
-3. **影響範囲の評価**
-
-   - N-Air で使用している機能への影響を評価
-   - 必要に応じて N-Air 側での対応も検討
-
-4. **テスト実施**
-   - N-Air での動作確認
-   - 問題がないことを確認後にリリース
-
-## 参考リンク
-
-- [Streamlabs Desktop](https://github.com/streamlabs/desktop)
-- [OBS Studio Node](https://github.com/streamlabs/obs-studio-node)
-- [N-Air App](https://github.com/n-air-app)
+- `タグ <tag> を作成し...` → Git タグ名
+- `.../releases/tag/<tag>` → リリース URL 確認
+- `package.json の dependencies...` 以降 → N-Air 側 `package.json`
+- `Release notes として以下を追加してください` 以降 → GitHub Release Description
 
 ## トラブルシューティング
 
-### repositories.json の取得に失敗する場合
+### `repositories.json` の取得に失敗
 
-- 指定したバージョンが存在するかを確認
-- インターネット接続を確認
-- GitHub の API 制限に達していないかを確認
+- バージョン文字列が正しいか（例: `v1.19.6`）
+- ネットワーク接続
+- GitHub 側の一時的な障害
 
-### バージョン指定がうまく動作しない場合
+### コミット時に署名エラー
 
-- `streamlabs-version.txt` ファイルが正しく作成されているかを確認
-- コマンドライン引数の形式が正しいかを確認（例: `v1.19.6`）
+- ローカル署名鍵設定を確認
+- 一時的に署名なしでコミットする場合:
+
+```bash
+git commit --no-gpg-sign
+```
