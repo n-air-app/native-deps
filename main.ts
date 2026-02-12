@@ -156,12 +156,12 @@ async function main() {
 
   // 結果格納用オブジェクト（パッケージ名とファイル名のマッピング）
   const resultPackages: { [packageName: string]: string } = {};
+  const expectedFiles = new Set<string>();
 
-  // distディレクトリが存在する場合は削除
-  if (fs.existsSync(DIST_DIRECTORY))
-    fs.rmSync(DIST_DIRECTORY, { recursive: true, force: true });
-
-  fs.mkdirSync(DIST_DIRECTORY);
+  // distディレクトリは残してキャッシュを活かす
+  if (!fs.existsSync(DIST_DIRECTORY)) {
+    fs.mkdirSync(DIST_DIRECTORY, { recursive: true });
+  }
 
   // リポジトリごとの処理
   for (const repository of repositories.root) {
@@ -180,9 +180,22 @@ async function main() {
     const filename = path.basename(downloadUrl);
     const filePath = `${DIST_DIRECTORY}/${filename}`;
     resultPackages[repository.name] = filename;
+    expectedFiles.add(filename);
 
     // ファイルをダウンロード
+    console.log(`[download] ${repository.name}: ${downloadUrl}`);
     await download(downloadUrl, filePath);
+  }
+
+  // 今回対象外となった古いファイルを削除
+  const existingFiles = fs.readdirSync(DIST_DIRECTORY, { withFileTypes: true });
+  for (const entry of existingFiles) {
+    if (!entry.isFile()) continue;
+    if (expectedFiles.has(entry.name)) continue;
+
+    const staleFilePath = path.join(DIST_DIRECTORY, entry.name);
+    fs.rmSync(staleFilePath, { force: true });
+    console.log(`削除: 古いファイル ${staleFilePath}`);
   }
 
   // 結果の出力
@@ -193,14 +206,6 @@ async function main() {
   console.log(
     `https://github.com/n-air-app/native-deps/releases/tag/${tagVersion}`
   );
-
-  console.log("------------------");
-  console.log("package.json の dependencies を以下に変更してください");
-  for (const packageName in resultPackages) {
-    console.log(
-      `"${packageName}": "https://github.com/n-air-app/native-deps/releases/download/${tagVersion}/${resultPackages[packageName]}",`
-    );
-  }
 
   // repositories.jsonの各項目の名前とバージョンを出力
   console.log("------------------");

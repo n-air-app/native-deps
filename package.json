@@ -4,12 +4,12 @@
   "description": "native-deps",
   "main": "index.js",
   "scripts": {
-    "build": "ts-node main.ts"
+    "build": "ts-node main.ts",
+    "release": "ts-node release.ts"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/targz": "^1.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

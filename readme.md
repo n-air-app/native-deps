@@ -29,7 +29,50 @@ v1.19.6
 
 > 引数で指定した場合は、実行時にこのファイルも更新されます。
 
-### 3) スクリプトを実行する
+変更したら、いつ更新したか追えるようにコミットしておくのを推奨します。
+
+### 3) 推奨フロー: `npm run release` で Draft Release まで自動作成する
+
+`main.ts` の処理（ダウンロード・情報生成）を実行したうえで、GitHub の Draft Release を作成し、`dist` のアセットをアップロードします。
+
+```bash
+# 事前に gh でログイン（repo 権限が必要）
+gh auth login
+
+# streamlabs-version.txt を使う
+npm run release
+
+# バージョンを直接指定
+npm run release -- v1.19.6
+```
+
+- 指定タグの Release ページがすでに存在する場合は自動で `skip` します。
+- Release の Description は `main.ts` の出力（Release notes セクション）を使用します。
+- 自動作成される Release はデフォルトで Draft です（内容確認後に Publish）。
+- `dist` のアセットに加えて、`repositories.json` も Release asset としてアップロードします。
+- このフローでは、**Git タグを手動で作成・push する必要はありません**。
+
+### 4) N-Air 側の依存を更新する
+
+- 実行結果ファイル（`dist/release-handoff.txt`）またはターミナルに表示される
+	`package.json の dependencies を以下に変更してください` 以降を、N-Air 側 `package.json` に反映
+
+例（`dist/release-handoff.txt` から貼り付け）:
+
+```json
+{
+	"dependencies": {
+		"obs-studio-node": "https://github.com/n-air-app/native-deps/releases/download/osn0.25.70/osn-0.25.70-release-win64.tar.gz",
+		"node-libuiohook": "https://github.com/n-air-app/native-deps/releases/download/osn0.25.70/node-libuiohook-1.1.17-win64.tar.gz"
+	}
+}
+```
+
+---
+
+### （参考）手動フロー: `main.ts` だけ実行して自分で Release を作る場合
+
+#### A) スクリプトを実行する
 
 - `streamlabs-version.txt` を使う場合:
 
@@ -45,13 +88,12 @@ npm run build -- v1.19.6
 npx ts-node main.ts v1.19.6
 ```
 
-### 4) 出力された情報を使ってリリースを作成する
+#### B) 出力された情報を使ってリリースを作成する
 
 実行後、以下が出力されます。
 
 - タグ名（例: `osn0.25.56`）
 - リリース先 URL（`https://github.com/n-air-app/native-deps/releases/tag/<tag>`）
-- N-Air 側 `package.json` 用の dependencies 行
 - Release notes 用 Markdown（library/version 表 + ElectronVersion/LibOBSVersion）
 
 さらに以下のファイルが生成されます。
@@ -59,7 +101,7 @@ npx ts-node main.ts v1.19.6
 - `dist/`（アップロードするアセット）
 - `repositories.json`（取得した依存定義）
 
-### 5) Git タグを作成して push する
+#### C) Git タグを作成して push する
 
 ```bash
 git tag osn0.25.56
@@ -68,23 +110,19 @@ git push origin osn0.25.56
 
 ※ タグ名は必ずスクリプト出力の値を使用してください。
 
-### 6) GitHub Releases を作成する
+#### D) GitHub Releases を作成する
 
 - [n-air-app/native-deps/releases](https://github.com/n-air-app/native-deps/releases) で「Draft a new release」
-- Tag に 5) で作ったタグを指定
+- Tag に C) で作ったタグを指定
 - Title はタグ名に合わせる
 - Description に、スクリプト出力の `Release notes として以下を追加してください` 以降を貼り付け
 - `dist/` 内のファイルをすべて添付して Publish
-
-### 7) N-Air 側の依存を更新する
-
-- スクリプト出力の `package.json の dependencies を以下に変更してください` 以降を、N-Air 側 `package.json` に反映
 
 ## 出力の貼り付け先早見表
 
 - `タグ <tag> を作成し...` → Git タグ名
 - `.../releases/tag/<tag>` → リリース URL 確認
-- `package.json の dependencies...` 以降 → N-Air 側 `package.json`
+- `package.json の dependencies...` 以降（`npm run release` 実行時）→ N-Air 側 `package.json`
 - `Release notes として以下を追加してください` 以降 → GitHub Release Description
 
 ## トラブルシューティング
