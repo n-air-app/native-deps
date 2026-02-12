@@ -1,6 +1,25 @@
-import fs from "fs";
-import path from "path";
-import axios from "axios";
+import fs from "node:fs";
+import path from "node:path";
+
+async function fetchText(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} ${response.statusText}: ${url}`
+    );
+  }
+  return response.text();
+}
+
+async function fetchArrayBuffer(url: string): Promise<ArrayBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `HTTP ${response.status} ${response.statusText}: ${url}`
+    );
+  }
+  return response.arrayBuffer();
+}
 
 // 出力ディレクトリのパス
 const DIST_DIRECTORY = "./dist";
@@ -22,8 +41,8 @@ async function download(
   }
 
   console.log(`ダウンロード中: ${url} → ${destinationPath}`);
-  const response = await axios.get(url, { responseType: "arraybuffer" });
-  fs.writeFileSync(destinationPath, new Uint8Array(response.data));
+  const arrayBuffer = await fetchArrayBuffer(url);
+  fs.writeFileSync(destinationPath, new Uint8Array(arrayBuffer));
 }
 
 // Streamlabs Desktopのrepositories.jsonをダウンロードして更新する関数
@@ -47,8 +66,8 @@ async function updateRepositoriesJson(
   console.log(`repositories.json をダウンロード中: ${repositoriesUrl}`);
 
   try {
-    const response = await axios.get(repositoriesUrl, { responseType: "text" });
-    const repositoriesData = JSON.parse(response.data);
+    const repositoriesText = await fetchText(repositoriesUrl);
+    const repositoriesData = JSON.parse(repositoriesText);
 
     // repositories.jsonを更新
     fs.writeFileSync(
@@ -81,8 +100,7 @@ async function fetchAndDisplayObsStudioNodeEnv(version: string): Promise<void> {
   const workflowUrl = `https://raw.githubusercontent.com/streamlabs/obs-studio-node/${version}/.github/workflows/main.yml`;
 
   try {
-    const response = await axios.get(workflowUrl, { responseType: "text" });
-    const workflowContent = response.data;
+    const workflowContent = await fetchText(workflowUrl);
 
     // テキストからLibOBSVersionを抽出
     const lines = workflowContent.split("\n");
@@ -164,7 +182,7 @@ async function main() {
     resultPackages[repository.name] = filename;
 
     // ファイルをダウンロード
-    await download(downloadUrl, filePath);
+    //await download(downloadUrl, filePath);
   }
 
   // 結果の出力
